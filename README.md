@@ -22,7 +22,7 @@ A[Developer] --> B[Git Repository]
 B --> C[GitHub Actions]
 B --> D[GitLab CI/CD]
 
-C --> E[Terraform]vimvi
+C --> E[Terraform]
 D --> E
 
 E --> F[AWS Infrastructure]
