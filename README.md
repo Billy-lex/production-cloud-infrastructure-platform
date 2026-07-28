@@ -54,11 +54,13 @@ N --> O[Grafana Monitoring]
 The platform includes:
 
 - AWS VPC networking
+- Public and private subnet architecture
+- Internet Gateway
+- NAT Gateway for private subnet outbound access
 - EC2 Linux servers
 - Security Groups
 - Nginx reverse proxy
 - Docker containerized applications
-- Terraform Infrastructure as Code
 - Ansible configuration management
 - Prometheus and Grafana monitoring
 - GitHub Actions and GitLab CI/CD pipelines
