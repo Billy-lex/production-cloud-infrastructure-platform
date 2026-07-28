@@ -112,10 +112,12 @@ EC2 --> Docker
 
 Docker --> App
 
+EC2 --> NAT
+
 NAT --> Internet
 
 ```
-
+ 
 ## Public Subnet
 
 Contains internet-facing resources:
