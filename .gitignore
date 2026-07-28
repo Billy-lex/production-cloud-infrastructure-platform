@@ -1,0 +1,77 @@
+# =====================
+# Terraform
+# =====================
+
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+
+
+# Terraform plan files
+*.tfplan
+
+
+# =====================
+# Ansible
+# =====================
+
+*.retry
+
+
+# =====================
+# AWS / Cloud Credentials
+# =====================
+
+.aws/
+credentials
+config
+
+# SSH keys
+*.pem
+*.key
+*.ppk
+
+
+# =====================
+# Environment Variables
+# =====================
+
+.env
+.env.*
+!.env.example
+
+
+# =====================
+# Docker
+# =====================
+
+*.log
+
+
+# =====================
+# Python
+# =====================
+
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+
+# =====================
+# IDE
+# =====================
+
+.vscode/
+.idea/
+
+
+# =====================
+# OS
+# =====================
+
+.DS_Store
+Thumbs.db
