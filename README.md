@@ -25,25 +25,30 @@ B --> D[GitLab CI/CD]
 C --> E[Terraform]
 D --> E
 
-E --> F[AWS Infrastructure]
+E --> F[AWS VPC]
 
-F --> G[VPC Networking]
+F --> G[Public Subnet]
 
-G --> H[EC2 Linux Server]
+G --> H[Internet Gateway]
+G --> I[NAT Gateway]
 
-H --> I[Nginx Reverse Proxy]
+F --> J[Private Subnet]
 
-I --> J[Docker Container]
+J --> K[EC2 Linux Server]
 
-J --> K[Application]
+K --> L[Nginx Reverse Proxy]
 
-H --> L[Ansible Configuration]
+L --> M[Docker Container]
 
-H --> M[Node Exporter]
+M --> N[Application]
 
-M --> N[Prometheus]
+K --> O[Ansible Configuration]
 
-N --> O[Grafana Monitoring]
+K --> P[Node Exporter]
+
+P --> Q[Prometheus]
+
+Q --> R[Grafana Monitoring]
 
 ```
 
@@ -59,6 +64,7 @@ The platform includes:
 - NAT Gateway for private subnet outbound access
 - EC2 Linux servers
 - Security Groups
+- IAM permissions
 - Nginx reverse proxy
 - Docker containerized applications
 - Ansible configuration management
@@ -67,10 +73,44 @@ The platform includes:
 
 ---
 
-```markdown
 # Network Architecture
 
 The platform uses a production-like AWS VPC network design.
+
+```mermaid
+graph TD
+
+Internet[Internet]
+
+IGW[Internet Gateway]
+
+NAT[NAT Gateway]
+
+Public[Public Subnet]
+
+Private[Private Subnet]
+
+EC2[EC2 Application Server]
+
+Docker[Docker Container]
+
+App[Application]
+
+Internet --> IGW
+
+IGW --> Public
+
+Public --> NAT
+
+NAT --> Private
+
+Private --> EC2
+
+EC2 --> Docker
+
+Docker --> App
+
+```
 
 ## Public Subnet
 
@@ -80,6 +120,7 @@ Contains internet-facing resources:
 - NAT Gateway
 - Future Application Load Balancer
 
+
 ## Private Subnet
 
 Contains internal workloads:
@@ -88,11 +129,12 @@ Contains internal workloads:
 - Docker containers
 - Monitoring components
 
+
 Private resources do not receive direct inbound internet access.
 
 Outbound internet access is provided through NAT Gateway.
 
---- 
+---
 
 # CI/CD Workflow
 
@@ -128,8 +170,12 @@ J --> K[Grafana Dashboard]
 ## Cloud
 
 - AWS
-  - EC2
   - VPC
+  - Public Subnets
+  - Private Subnets
+  - Internet Gateway
+  - NAT Gateway
+  - EC2
   - Security Groups
   - IAM
   - S3
@@ -212,6 +258,9 @@ production-cloud-infrastructure-platform
 ## Phase 1 - Infrastructure Provisioning
 
 - [ ] Create AWS VPC networking
+- [ ] Create public and private subnets
+- [ ] Configure Internet Gateway
+- [ ] Configure NAT Gateway
 - [ ] Provision EC2 Linux servers using Terraform
 - [ ] Configure Security Groups and IAM permissions
 
@@ -255,14 +304,14 @@ This project demonstrates hands-on experience with:
 - Monitoring and troubleshooting
 - DevOps operational practices
 
-
 ---
 
 # Future Improvements
 
 - Add AWS Application Load Balancer
-- Introduce private subnet architecture
+- Implement Auto Scaling Groups
 - Add HTTPS/TLS certificate management
 - Implement centralized logging
+- Improve disaster recovery strategy
 - Migrate workload to Kubernetes
 - Add GitOps deployment with Argo CD
