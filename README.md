@@ -31,7 +31,6 @@ F --> G[Public Subnet]
 
 G --> H[Internet Gateway]
 G --> I[Nginx Reverse Proxy]
-G --> J[NAT Gateway]
 
 F --> K[Private Subnet]
 
@@ -104,8 +103,6 @@ Internet --> IGW
 IGW --> Public
 
 Public --> Nginx
-
-Public --> NAT
 
 Nginx --> Private
 
