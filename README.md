@@ -65,8 +65,34 @@ The platform includes:
 - Prometheus and Grafana monitoring
 - GitHub Actions and GitLab CI/CD pipelines
 
-
 ---
+
+```markdown
+# Network Architecture
+
+The platform uses a production-like AWS VPC network design.
+
+## Public Subnet
+
+Contains internet-facing resources:
+
+- Internet Gateway
+- NAT Gateway
+- Future Application Load Balancer
+
+## Private Subnet
+
+Contains internal workloads:
+
+- EC2 application servers
+- Docker containers
+- Monitoring components
+
+Private resources do not receive direct inbound internet access.
+
+Outbound internet access is provided through NAT Gateway.
+
+--- 
 
 # CI/CD Workflow
 
