@@ -30,21 +30,22 @@ E --> F[AWS VPC]
 F --> G[Public Subnet]
 
 G --> H[Internet Gateway]
-G --> I[NAT Gateway]
+G --> I[Nginx Reverse Proxy]
+G --> J[NAT Gateway]
 
-F --> J[Private Subnet]
+F --> K[Private Subnet]
 
-J --> K[EC2 Linux Server]
-
-K --> L[Nginx Reverse Proxy]
+K --> L[EC2 Application Server]
 
 L --> M[Docker Container]
 
 M --> N[Application]
 
-K --> O[Ansible Configuration]
+I --> L
 
-K --> P[Node Exporter]
+L --> O[Ansible Configuration]
+
+L --> P[Node Exporter]
 
 P --> Q[Prometheus]
 
@@ -84,13 +85,15 @@ Internet[Internet]
 
 IGW[Internet Gateway]
 
-NAT[NAT Gateway]
-
 Public[Public Subnet]
+
+Nginx[Nginx Reverse Proxy]
+
+NAT[NAT Gateway]
 
 Private[Private Subnet]
 
-EC2[EC2 Application Server]
+EC2[Application EC2]
 
 Docker[Docker Container]
 
@@ -100,15 +103,19 @@ Internet --> IGW
 
 IGW --> Public
 
+Public --> Nginx
+
 Public --> NAT
 
-NAT --> Private
+Nginx --> Private
 
 Private --> EC2
 
 EC2 --> Docker
 
 Docker --> App
+
+NAT --> Internet
 
 ```
 
@@ -117,9 +124,12 @@ Docker --> App
 Contains internet-facing resources:
 
 - Internet Gateway
+- Nginx Reverse Proxy
 - NAT Gateway
-- Future Application Load Balancer
 
+Public subnet resources handle external communication.
+
+---
 
 ## Private Subnet
 
@@ -128,7 +138,6 @@ Contains internal workloads:
 - EC2 application servers
 - Docker containers
 - Monitoring components
-
 
 Private resources do not receive direct inbound internet access.
 
@@ -153,7 +162,7 @@ E --> F[Push Image Registry]
 
 F --> G[Deploy Application]
 
-G --> H[EC2 Docker Environment]
+G --> H[Private EC2 Docker Environment]
 
 H --> I[Monitoring]
 
