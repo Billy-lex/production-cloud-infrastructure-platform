@@ -34,9 +34,7 @@ resource "aws_instance" "nginx" {
   iam_instance_profile   = var.iam_instance_profile
   key_name               = var.key_name != "" ? var.key_name : null
 
-  user_data = base64encode(templatefile("${path.module}/templates/nginx_user_data.sh", {
-    app_private_ip = var.app_fixed_private_ip
-  }))
+  user_data = base64encode(file("${path.module}/templates/bootstrap.sh"))
 
   root_block_device {
     volume_size = 8
@@ -62,6 +60,7 @@ resource "aws_instance" "app" {
   iam_instance_profile   = var.iam_instance_profile
   key_name               = var.key_name != "" ? var.key_name : null
   private_ip             = var.app_fixed_private_ip
+  user_data              = base64encode(file("${path.module}/templates/bootstrap.sh"))
 
   root_block_device {
     volume_size = 8
