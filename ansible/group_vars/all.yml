@@ -1,0 +1,8 @@
+# Shared variables for all hosts
+
+# Application backend address (app server's fixed private IP from Terraform)
+app_private_ip: "10.0.2.10"
+app_port: 8080
+
+# Docker version pinning
+docker_edition: "ce"

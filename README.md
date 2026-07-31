@@ -124,7 +124,7 @@ Contains internet-facing resources:
 
 - Internet Gateway
 - Nginx Reverse Proxy
-- NAT Gateway
+- Optional NAT Gateway
 
 Public subnet resources handle external communication.
 

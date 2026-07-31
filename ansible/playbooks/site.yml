@@ -1,0 +1,20 @@
+# Main playbook: provisions all hosts with Docker, configures Nginx reverse proxy
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml
+#   ansible-playbook playbooks/site.yml --limit webservers
+#   ansible-playbook playbooks/site.yml --limit appservers
+
+# Install Docker on all hosts
+- name: Install Docker on all hosts
+  hosts: dev
+  become: true
+  roles:
+    - docker
+
+# Configure Nginx reverse proxy on webservers
+- name: Configure Nginx reverse proxy
+  hosts: webservers
+  become: true
+  roles:
+    - nginx

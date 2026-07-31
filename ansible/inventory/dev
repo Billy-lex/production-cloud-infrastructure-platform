@@ -1,0 +1,16 @@
+# -----------------------------------------------------------------------------
+# Dev environment inventory
+# Replace IPs with actual Terraform outputs after `terraform apply`
+#   nginx_public_ip  -> terraform output -raw nginx_public_ip
+#   app_private_ip   -> terraform output -raw app_private_ip
+# -----------------------------------------------------------------------------
+
+[webservers]
+nginx ansible_host=<NGINX_PUBLIC_IP>
+
+[appservers]
+app ansible_host=<APP_PRIVATE_IP> ansible_ssh_common_args='-o ProxyJump=ubuntu@<NGINX_PUBLIC_IP>'
+
+[dev:children]
+webservers
+appservers
