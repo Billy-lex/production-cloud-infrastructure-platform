@@ -48,6 +48,9 @@ app ansible_host=$APP_IP ansible_ssh_common_args='-o ProxyJump=ubuntu@$NGINX_IP'
 [$ENV:children]
 webservers
 appservers
+
+[all:vars]
+app_port=$APP_PORT
 EOF
 
-echo "==> Done. Inventory ready for ansible-playbook."
+echo "==> Done. Run: ansible-playbook -i inventory/$ENV playbooks/site.yml"

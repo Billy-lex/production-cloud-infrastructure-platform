@@ -42,13 +42,13 @@ ansible:
   before_script:
     - apt-get update && apt-get install -y openssh-client jq
     - pip install ansible==${ANSIBLE_VERSION}
+    - mkdir -p ~/.ssh
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | ssh-add -
-    - mkdir -p ~/.ssh
   script:
     - bash scripts/generate-inventory-from-json.sh tf_outputs.json $ENVIRONMENT
     - cd ansible
-    - ansible-playbook playbooks/site.yml
+    - ansible-playbook -i inventory/$ENVIRONMENT playbooks/site.yml
   dependencies:
     - terraform
   rules:

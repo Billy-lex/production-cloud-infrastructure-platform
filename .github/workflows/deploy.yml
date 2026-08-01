@@ -94,6 +94,6 @@ jobs:
 
       - name: Run Ansible playbook
         working-directory: ansible
-        run: ansible-playbook playbooks/site.yml
+        run: ansible-playbook -i inventory/${{ env.ENVIRONMENT }} playbooks/site.yml
         env:
           ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/deploy_key

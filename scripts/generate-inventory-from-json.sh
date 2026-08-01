@@ -47,4 +47,4 @@ appservers
 app_port=$APP_PORT
 EOF
 
-echo "==> Done. Inventory ready for ansible-playbook."
+echo "==> Done. Run: ansible-playbook -i inventory/$ENV playbooks/site.yml"
