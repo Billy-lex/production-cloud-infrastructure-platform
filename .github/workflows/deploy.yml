@@ -76,7 +76,9 @@ jobs:
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          cat <<'EOF' > ~/.ssh/deploy_key
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          EOF
           chmod 600 ~/.ssh/deploy_key
           eval $(ssh-agent -s)
           ssh-add ~/.ssh/deploy_key
