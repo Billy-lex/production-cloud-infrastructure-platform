@@ -39,10 +39,24 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
       - name: Terraform Apply
         run: terraform apply -auto-approve
-    outputs:
-      nginx_ip: ${{ steps.apply.outputs.nginx_ip }}
+
+      - name: Export Terraform outputs
+        run: terraform output -json > ${{ runner.temp }}/tf_outputs.json
+
+      - name: Upload outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-outputs
+          path: ${{ runner.temp }}/tf_outputs.json
+          retention-days: 1
 
   ansible:
     name: Ansible Configure
@@ -59,13 +73,6 @@ jobs:
       - name: Install Ansible
         run: pip install ansible==${{ env.ANSIBLE_VERSION }}
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
@@ -76,8 +83,14 @@ jobs:
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
-      - name: Generate Ansible inventory from Terraform
-        run: bash scripts/terraform-to-ansible.sh ${{ env.ENVIRONMENT }}
+      - name: Download Terraform outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          path: ${{ runner.temp }}
+
+      - name: Generate Ansible inventory
+        run: bash scripts/generate-inventory-from-json.sh ${{ runner.temp }}/tf_outputs.json ${{ env.ENVIRONMENT }}
 
       - name: Run Ansible playbook
         working-directory: ansible
