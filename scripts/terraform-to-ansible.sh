@@ -25,8 +25,13 @@ APP_IP=$(terraform output -raw app_private_ip 2>/dev/null) || {
     exit 1
 }
 
+APP_PORT=$(terraform output -raw app_port 2>/dev/null || echo "8080")
+
 echo "    nginx_public_ip = $NGINX_IP"
 echo "    app_private_ip  = $APP_IP"
+echo "    app_port        = $APP_PORT"
+
+mkdir -p "$(dirname "$INVENTORY_FILE")"
 
 echo "==> Generating Ansible inventory at $INVENTORY_FILE"
 

@@ -10,6 +10,7 @@ stages:
 
 variables:
   TF_VERSION: "1.5.7"
+  ANSIBLE_VERSION: "9.4.0"
   ENVIRONMENT: "dev"
   AWS_REGION: "us-east-1"
   TF_DIR: "terraform/environments/dev"
@@ -20,10 +21,13 @@ terraform:
   script:
     - cd $TF_DIR
     - terraform init
+    - terraform validate
+    - terraform plan
     - terraform apply -auto-approve
+    - terraform output -json > ${CI_PROJECT_DIR}/tf_outputs.json
   artifacts:
     paths:
-      - $TF_DIR/.terraform
+      - tf_outputs.json
     expire_in: 1 hour
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
@@ -36,14 +40,13 @@ ansible:
   stage: ansible
   image: python:3.12-slim
   before_script:
-    - apt-get update && apt-get install -y openssh-client
-    - pip install ansible
+    - apt-get update && apt-get install -y openssh-client jq
+    - pip install ansible==${ANSIBLE_VERSION}
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | ssh-add -
     - mkdir -p ~/.ssh
-    - ssh-keyscan -H "$(terraform -chdir=$TF_DIR output -raw nginx_public_ip)" >> ~/.ssh/known_hosts 2>/dev/null || true
   script:
-    - bash scripts/terraform-to-ansible.sh $ENVIRONMENT
+    - bash scripts/generate-inventory-from-json.sh tf_outputs.json $ENVIRONMENT
     - cd ansible
     - ansible-playbook playbooks/site.yml
   dependencies:
