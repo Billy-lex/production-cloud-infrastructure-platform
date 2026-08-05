@@ -1,0 +1,59 @@
+# GitLab CI/CD pipeline: Terraform + Ansible
+# Required CI/CD variables (Settings > CI/CD > Variables):
+#   AWS_ACCESS_KEY_ID        - AWS access key
+#   AWS_SECRET_ACCESS_KEY    - AWS secret key
+#   SSH_PRIVATE_KEY          - SSH private key for EC2 access
+
+stages:
+  - terraform
+  - ansible
+
+variables:
+  TF_VERSION: "1.5.7"
+  ANSIBLE_VERSION: "9.4.0"
+  ENVIRONMENT: "dev"
+  AWS_REGION: "us-east-1"
+  TF_DIR: "terraform/environments/dev"
+
+terraform:
+  stage: terraform
+  image: hashicorp/terraform:${TF_VERSION}
+  script:
+    - cd $TF_DIR
+    - terraform init
+    - terraform validate
+    - terraform plan
+    - terraform apply -auto-approve
+    - terraform output -json > ${CI_PROJECT_DIR}/tf_outputs.json
+  artifacts:
+    paths:
+      - tf_outputs.json
+    expire_in: 1 hour
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - terraform/**/*
+        - ansible/**/*
+    - when: manual
+
+ansible:
+  stage: ansible
+  image: python:3.12-slim
+  before_script:
+    - apt-get update && apt-get install -y openssh-client jq
+    - pip install ansible==${ANSIBLE_VERSION}
+    - mkdir -p ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | ssh-add -
+  script:
+    - bash scripts/generate-inventory-from-json.sh tf_outputs.json $ENVIRONMENT
+    - cd ansible
+    - ansible-playbook -i inventory/$ENVIRONMENT playbooks/site.yml
+  dependencies:
+    - terraform
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - terraform/**/*
+        - ansible/**/*
+    - when: manual

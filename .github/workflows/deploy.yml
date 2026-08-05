@@ -1,0 +1,100 @@
+name: Deploy Infrastructure & Configure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - "ansible/**"
+  workflow_dispatch:
+
+env:
+  TF_VERSION: "1.5.7"
+  ANSIBLE_VERSION: "9.4.0"
+  AWS_REGION: "us-east-1"
+  ENVIRONMENT: "dev"
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/environments/dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      - name: Export Terraform outputs
+        run: terraform output -json > ${{ runner.temp }}/tf_outputs.json
+
+      - name: Upload outputs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-outputs
+          path: ${{ runner.temp }}/tf_outputs.json
+          retention-days: 1
+
+  ansible:
+    name: Ansible Configure
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: pip install ansible==${{ env.ANSIBLE_VERSION }}
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          cat <<'EOF' > ~/.ssh/deploy_key
+          ${{ secrets.SSH_PRIVATE_KEY }}
+          EOF
+          chmod 600 ~/.ssh/deploy_key
+          eval $(ssh-agent -s)
+          ssh-add ~/.ssh/deploy_key
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+
+      - name: Download Terraform outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          path: ${{ runner.temp }}
+
+      - name: Generate Ansible inventory
+        run: bash scripts/generate-inventory-from-json.sh ${{ runner.temp }}/tf_outputs.json ${{ env.ENVIRONMENT }}
+
+      - name: Run Ansible playbook
+        working-directory: ansible
+        run: ansible-playbook -i inventory/${{ env.ENVIRONMENT }} playbooks/site.yml
+        env:
+          ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/deploy_key
