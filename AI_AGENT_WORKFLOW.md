@@ -555,4 +555,44 @@ The objective is:
 
 ---
 
+# 15. Progress Tracking
+
+The AI agent should maintain a progress document at `docs/PROGRESS.md`.
+
+## Purpose
+
+Provide a single source of truth for project status that both the human and the AI agent can reference.
+
+## When to Update
+
+- After completing a significant task or phase
+- At the end of each working session
+- When architecture decisions are made
+- When new issues or blockers are discovered
+
+## Structure
+
+```markdown
+Current Phase:
+
+Completed:
+
+In Progress:
+
+Next Actions:
+
+Architecture Decisions:
+
+Known Issues:
+```
+
+## Principles
+
+- Keep it factual and concise
+- Update the "Last updated" date on every change
+- Record decisions with their reasoning
+- Do not track trivial or temporary debugging work
+
+---
+
 END OF WORKFLOW

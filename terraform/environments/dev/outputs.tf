@@ -54,3 +54,12 @@ output "app_instance_id" {
   description = "Instance ID of the application server"
   value       = module.ec2.app_instance_id
 }
+
+# -----------------------------------------------------------------------------
+# ECR Outputs
+# -----------------------------------------------------------------------------
+
+output "ecr_repository_url" {
+  description = "URL of the ECR repository for application images"
+  value       = module.ecr.repository_url
+}

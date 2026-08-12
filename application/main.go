@@ -24,16 +24,15 @@ type Response struct {
 }
 
 func main() {
-	port := os.Getenv("APP_PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port    := getEnv("APP_PORT", "8080")
+	env     := getEnv("APP_ENV", "development")
+	appName := getEnv("APP_NAME", "platform-app")
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/health", handleHealth)
 	http.HandleFunc("/api/info", handleInfo)
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("Starting %s [env=%s] on port %s", appName, env, port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
@@ -63,7 +62,11 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 			"hostname":  hostname,
 			"uptime":    time.Since(startTime).String(),
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
-			"go_version": "1.22",
+			"config": map[string]string{
+				"app_env":  getEnv("APP_ENV", "development"),
+				"app_name": getEnv("APP_NAME", "platform-app"),
+				"app_port": getEnv("APP_PORT", "8080"),
+			},
 		},
 	})
 }
@@ -72,4 +75,12 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(data)
+}
+
+// getEnv reads an environment variable with a fallback default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
