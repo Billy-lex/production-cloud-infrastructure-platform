@@ -66,3 +66,11 @@ module "ec2" {
   key_name             = var.key_name
   iam_instance_profile = module.security.ec2_instance_profile_name
 }
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project_name    = var.project_name
+  environment     = var.environment
+  repository_name = "platform-app"
+}
