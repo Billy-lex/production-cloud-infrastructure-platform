@@ -1,0 +1,9 @@
+# ECR repository URL (from Terraform output)
+# ecr_repository_url: ""
+
+# Image tag to deploy (semver, e.g. 1.0.0)
+# image_tag: ""
+
+# Container settings
+app_container_name: "platform-app"
+app_port: 8080

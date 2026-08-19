@@ -1,0 +1,13 @@
+- name: Restart app container
+  community.docker.docker_container:
+    name: "{{ app_container_name }}"
+    image: "{{ ecr_repository_url }}:{{ image_tag }}"
+    state: started
+    restart: true
+    restart_policy: unless-stopped
+    ports:
+      - "{{ app_port }}:{{ app_port }}"
+    env:
+      APP_PORT: "{{ app_port | string }}"
+      APP_ENV: production
+      APP_NAME: platform-app
