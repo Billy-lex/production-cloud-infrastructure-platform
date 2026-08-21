@@ -1,0 +1,12 @@
+[webservers]
+nginx ansible_host=${NGINX_IP}
+
+[appservers]
+app ansible_host=${APP_IP} ansible_ssh_common_args='-o ProxyJump=ubuntu@${NGINX_IP}'
+
+[${ENV}:children]
+webservers
+appservers
+
+[all:vars]
+app_port=${APP_PORT}

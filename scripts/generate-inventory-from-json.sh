@@ -30,21 +30,16 @@ echo "    app_port        = $APP_PORT"
 
 mkdir -p "$(dirname "$INVENTORY_FILE")"
 
+TEMPLATE_FILE="$SCRIPT_DIR/../ansible/templates/inventory.tmpl"
+
+if [ ! -f "$TEMPLATE_FILE" ]; then
+  echo "ERROR: Inventory template not found: $TEMPLATE_FILE"
+  exit 1
+fi
+
 echo "==> Generating Ansible inventory at $INVENTORY_FILE"
 
-cat > "$INVENTORY_FILE" <<EOF
-[webservers]
-nginx ansible_host=$NGINX_IP
-
-[appservers]
-app ansible_host=$APP_IP ansible_ssh_common_args='-o ProxyJump=ubuntu@$NGINX_IP'
-
-[$ENV:children]
-webservers
-appservers
-
-[all:vars]
-app_port=$APP_PORT
-EOF
+export NGINX_IP APP_IP APP_PORT ENV
+envsubst < "$TEMPLATE_FILE" > "$INVENTORY_FILE"
 
 echo "==> Done. Run: ansible-playbook -i inventory/$ENV playbooks/site.yml"
