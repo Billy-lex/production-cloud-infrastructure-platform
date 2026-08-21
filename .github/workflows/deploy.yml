@@ -23,7 +23,6 @@ env:
   AWS_REGION: "us-east-1"
   ENVIRONMENT: "dev"
   ARTIFACT_RETENTION_DAYS: 1
-  WORKFLOW_TIMEOUT_MINUTES: 45
 
 # ==============================================================================
 # Minimal GITHUB_TOKEN permissions (security best practice)
@@ -42,7 +41,7 @@ jobs:
   terraform:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: terraform/environments/dev
@@ -114,7 +113,7 @@ jobs:
     name: Ansible Configure
     needs: terraform
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -148,7 +147,7 @@ jobs:
     name: Build & Push Docker Image
     needs: ansible
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    timeout-minutes: 45
     outputs:
       image_tag: ${{ steps.meta.outputs.image_tag }}
       ecr_repository_url: ${{ needs.terraform.outputs.ecr_repository_url }}
@@ -213,7 +212,7 @@ jobs:
     name: Deploy Application
     needs: [terraform, build-push]
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
