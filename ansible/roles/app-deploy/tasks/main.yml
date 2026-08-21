@@ -1,0 +1,56 @@
+# Deploy application container from ECR
+
+- name: Install Docker Python SDK
+  ansible.builtin.pip:
+    name: docker
+    state: present
+
+- name: Login to ECR
+  ansible.builtin.shell: |
+    aws ecr get-login-password --region {{ aws_region }} | \
+    docker login --username AWS --password-stdin {{ ecr_repository_url }}
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false
+
+- name: Pull application image
+  community.docker.docker_image:
+    name: "{{ ecr_repository_url }}"
+    tag: "{{ image_tag }}"
+    source: pull
+
+- name: Stop existing container
+  community.docker.docker_container:
+    name: "{{ app_container_name }}"
+    state: stopped
+  failed_when: false
+  changed_when: false
+
+- name: Remove existing container
+  community.docker.docker_container:
+    name: "{{ app_container_name }}"
+    state: absent
+  changed_when: false
+
+- name: Run application container
+  community.docker.docker_container:
+    name: "{{ app_container_name }}"
+    image: "{{ ecr_repository_url }}:{{ image_tag }}"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "{{ app_port }}:{{ app_port }}"
+    env:
+      APP_PORT: "{{ app_port | string }}"
+      APP_ENV: production
+      APP_NAME: platform-app
+
+- name: Wait for application health check
+  ansible.builtin.uri:
+    url: "http://localhost:{{ app_port }}/health"
+    return_content: true
+  register: health_result
+  retries: 10
+  delay: 3
+  until: health_result.status == 200
