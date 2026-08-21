@@ -1,33 +1,70 @@
+# Workflow: infrastructure provisioning + application release
 name: Deploy Infrastructure & Configure
 
+# ==============================================================================
+# Trigger rules
+# ==============================================================================
 on:
   push:
     branches: [main]
     paths:
       - "terraform/**"
       - "ansible/**"
+      - "application/**"
   workflow_dispatch:
 
+# ==============================================================================
+# Global environment variables
+# ==============================================================================
 env:
   TF_VERSION: "1.5.7"
   ANSIBLE_VERSION: "9.4.0"
+  PYTHON_VERSION: "3.12"
   AWS_REGION: "us-east-1"
   ENVIRONMENT: "dev"
+  ARTIFACT_RETENTION_DAYS: 1
+  WORKFLOW_TIMEOUT_MINUTES: 45
 
+# ==============================================================================
+# Minimal GITHUB_TOKEN permissions (security best practice)
+# ==============================================================================
+permissions:
+  contents: read
+  id-token: write
+
+# ==============================================================================
+# Jobs
+# ==============================================================================
 jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1: Provision AWS infrastructure with Terraform
+  # ---------------------------------------------------------------------------
   terraform:
     name: Terraform Apply
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
     defaults:
       run:
         working-directory: terraform/environments/dev
+    outputs:
+      ecr_repository_url: ${{ steps.outputs.outputs.ecr_repository_url }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-${{ env.TF_VERSION }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-tf-${{ env.TF_VERSION }}-
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -43,46 +80,51 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -out=tfplan
+
+      # Optional: manual approval gate before apply (enable for staging/prod)
+      # - name: Wait for approval
+      #   uses: trstringer/manual-approval@v1
+      #   with:
+      #     secret: ${{ github.TOKEN }}
+      #     approvers: ${{ github.triggering_actor }}
+      #     minimum-approvals: 1
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve tfplan
 
       - name: Export Terraform outputs
-        run: terraform output -json > ${{ runner.temp }}/tf_outputs.json
+        id: outputs
+        run: |
+          terraform output -json > ${{ runner.temp }}/tf_outputs.json
+          ECR_URL=$(terraform output -raw ecr_repository_url)
+          echo "ecr_repository_url=$ECR_URL" >> $GITHUB_OUTPUT
 
       - name: Upload outputs artifact
         uses: actions/upload-artifact@v4
         with:
           name: tf-outputs
           path: ${{ runner.temp }}/tf_outputs.json
-          retention-days: 1
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
 
+  # ---------------------------------------------------------------------------
+  # Stage 2: Configure servers with Ansible (Docker, Nginx)
+  # ---------------------------------------------------------------------------
   ansible:
     name: Ansible Configure
     needs: terraform
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Ansible & SSH Agent
+        uses: ./.github/actions/ansible-ssh-setup
         with:
-          python-version: "3.12"
-
-      - name: Install Ansible
-        run: pip install ansible==${{ env.ANSIBLE_VERSION }}
-
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          cat <<'EOF' > ~/.ssh/deploy_key
-          ${{ secrets.SSH_PRIVATE_KEY }}
-          EOF
-          chmod 600 ~/.ssh/deploy_key
-          eval $(ssh-agent -s)
-          ssh-add ~/.ssh/deploy_key
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+          python-version: ${{ env.PYTHON_VERSION }}
+          ansible-version: ${{ env.ANSIBLE_VERSION }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Download Terraform outputs
         uses: actions/download-artifact@v4
@@ -93,8 +135,111 @@ jobs:
       - name: Generate Ansible inventory
         run: bash scripts/generate-inventory-from-json.sh ${{ runner.temp }}/tf_outputs.json ${{ env.ENVIRONMENT }}
 
-      - name: Run Ansible playbook
+      - name: Run Ansible site playbook
         working-directory: ansible
         run: ansible-playbook -i inventory/${{ env.ENVIRONMENT }} playbooks/site.yml
+        env:
+          ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/deploy_key
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: Build Docker image, scan, and push to ECR
+  # ---------------------------------------------------------------------------
+  build-push:
+    name: Build & Push Docker Image
+    needs: ansible
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      ecr_repository_url: ${{ needs.terraform.outputs.ecr_repository_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ needs.terraform.outputs.ecr_repository_url }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Determine image tag
+        id: meta
+        run: |
+          TAG=$(date +%Y%m%d)-${GITHUB_SHA::7}
+          echo "image_tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        working-directory: application
+        run: |
+          ECR_URL=${{ needs.terraform.outputs.ecr_repository_url }}
+          docker buildx build \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            -t $ECR_URL:${{ steps.meta.outputs.image_tag }} \
+            --push .
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.terraform.outputs.ecr_repository_url }}:${{ steps.meta.outputs.image_tag }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          # exit-code: '1'  # Uncomment to block pipeline on critical/high vulnerabilities
+
+  # ---------------------------------------------------------------------------
+  # Stage 4: Deploy container to app server via Ansible
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy Application
+    needs: [terraform, build-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ env.WORKFLOW_TIMEOUT_MINUTES }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Ansible & SSH Agent
+        uses: ./.github/actions/ansible-ssh-setup
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          ansible-version: ${{ env.ANSIBLE_VERSION }}
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Download Terraform outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs
+          path: ${{ runner.temp }}
+
+      - name: Generate Ansible inventory
+        run: bash scripts/generate-inventory-from-json.sh ${{ runner.temp }}/tf_outputs.json ${{ env.ENVIRONMENT }}
+
+      - name: Deploy app via Ansible
+        working-directory: ansible
+        run: |
+          ansible-playbook -i inventory/${{ env.ENVIRONMENT }} playbooks/app-deploy.yml \
+            -e "ecr_repository_url=${{ needs.terraform.outputs.ecr_repository_url }}" \
+            -e "image_tag=${{ needs.build-push.outputs.image_tag }}" \
+            -e "aws_region=${{ env.AWS_REGION }}"
         env:
           ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/deploy_key

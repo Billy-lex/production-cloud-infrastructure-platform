@@ -1,0 +1,37 @@
+name: Setup Ansible + SSH Agent
+description: Install Python, Ansible, configure SSH private key and ssh-agent
+
+inputs:
+  python-version:
+    description: Python version to install
+    required: true
+  ansible-version:
+    description: Ansible pip version
+    required: true
+  ssh-private-key:
+    description: Raw SSH private key content
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Ansible
+      shell: bash
+      run: pip install ansible==${{ inputs.ansible-version }}
+
+    - name: Configure SSH private key & ssh-agent
+      shell: bash
+      run: |
+        mkdir -p ~/.ssh
+        cat <<'EOF' > ~/.ssh/deploy_key
+        ${{ inputs.ssh-private-key }}
+        EOF
+        chmod 600 ~/.ssh/deploy_key
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/deploy_key
+        echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
