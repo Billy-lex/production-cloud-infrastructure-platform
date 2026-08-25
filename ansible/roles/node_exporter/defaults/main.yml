@@ -1,0 +1,4 @@
+# Node Exporter defaults
+node_exporter_image: "prom/node-exporter:v1.8.2"
+node_exporter_container_name: "node-exporter"
+node_exporter_port: 9100

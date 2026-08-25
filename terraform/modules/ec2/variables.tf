@@ -61,3 +61,9 @@ variable "app_fixed_private_ip" {
   type        = string
   default     = "10.0.2.10"
 }
+
+variable "app_port" {
+  description = "Application port exposed by the app server"
+  type        = number
+  default     = 8080
+}

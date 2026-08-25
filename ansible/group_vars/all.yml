@@ -1,8 +1,22 @@
 # Shared variables for all hosts
 
+# Environment name
+env: "dev"
+
 # Application backend address (app server's fixed private IP from Terraform)
 app_private_ip: "10.0.2.10"
 app_port: 8080
 
+# Monitoring ports
+grafana_port: 3000
+prometheus_port: 9090
+
 # Docker version pinning
 docker_edition: "ce"
+
+# AWS region (for ECR login)
+aws_region: "us-east-1"
+
+# ECR repository URL (override via -e or CI/CD)
+ecr_repository_url: ""
+image_tag: "latest"

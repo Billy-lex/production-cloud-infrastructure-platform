@@ -1,4 +1,5 @@
 # Main playbook: provisions all hosts with Docker, configures Nginx reverse proxy
+# and deploys Prometheus monitoring on app servers
 #
 # Usage:
 #   ansible-playbook playbooks/site.yml
@@ -18,3 +19,12 @@
   become: true
   roles:
     - nginx
+
+# Deploy Node Exporter, Prometheus and Grafana monitoring on app servers
+- name: Deploy monitoring stack
+  hosts: appservers
+  become: true
+  roles:
+    - node_exporter
+    - prometheus
+    - grafana

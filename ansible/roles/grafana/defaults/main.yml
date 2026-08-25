@@ -1,0 +1,10 @@
+# Grafana defaults
+grafana_image: "grafana/grafana:11.2.0"
+grafana_container_name: "grafana"
+grafana_port: 3000
+grafana_data_dir: "/opt/grafana"
+grafana_provisioning_dir: "/opt/grafana/provisioning"
+
+# Admin credentials (override in production via vault or CI/CD secrets)
+grafana_admin_user: "admin"
+grafana_admin_password: "admin"
