@@ -22,3 +22,8 @@ output "app_private_ip" {
   description = "Private IP of the application server"
   value       = aws_instance.app.private_ip
 }
+
+output "app_port" {
+  description = "Application port exposed by the app server"
+  value       = var.app_port
+}

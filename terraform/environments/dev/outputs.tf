@@ -45,6 +45,11 @@ output "app_private_ip" {
   value       = module.ec2.app_private_ip
 }
 
+output "app_port" {
+  description = "Application port exposed by the app server"
+  value       = module.ec2.app_port
+}
+
 output "nginx_instance_id" {
   description = "Instance ID of the Nginx server"
   value       = module.ec2.nginx_instance_id
