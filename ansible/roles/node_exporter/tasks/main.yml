@@ -1,0 +1,29 @@
+# Deploy Node Exporter container for system metrics collection
+# Mounts host filesystem to collect system-level metrics
+
+- name: Run Node Exporter container
+  community.docker.docker_container:
+    name: "{{ node_exporter_container_name }}"
+    image: "{{ node_exporter_image }}"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "{{ node_exporter_port }}:9100"
+    volumes:
+      - "/proc:/host/proc:ro"
+      - "/sys:/host/sys:ro"
+      - "/:/rootfs:ro"
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+
+- name: Wait for Node Exporter to be ready
+  ansible.builtin.uri:
+    url: "http://localhost:{{ node_exporter_port }}/metrics"
+    return_content: true
+  register: metrics_result
+  retries: 10
+  delay: 3
+  until: metrics_result.status == 200
